@@ -2465,16 +2465,16 @@ class VisionSettingsPanel(SettingsPanel):
 			self.Thaw()
 
 	def updateCurrentProviders(self):
-		currentProviders = ""
-		for role, roleDesc in vision.ROLE_DESCRIPTIONS:
-			provider = vision.handler.getattr(role, None)
+		currentProviders = {}
+		for role, roleDesc in vision.ROLE_DESCRIPTIONS.iteritems():
+			provider = getattr(vision.handler, role, None)
 			if provider:
-				currentProviders+="{role}: {provider}\n".format(role=roleDesc, provider=provider.description)
-		if not currentProviders:
+				currentProviders[roleDesc]=provider.description
+		currentProvidersStr = ("\n".join("{}: {}".format(role, provider) for role, provider in currentProviders.iteritems()) or 
 			# Translators: Displayed in the current vision enhancement providers edit control,
 			# when no providers are active.
-			currentProviders = _("No active providers")
-		self.providerNameCtrl.SetValue(currentProviders)
+			_("No active providers"))
+		self.providersCtrl.SetValue(currentProvidersStr)
 
 	def onPanelActivated(self):
 		super(VisionSettingsPanel,self).onPanelActivated()
