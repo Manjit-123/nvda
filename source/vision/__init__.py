@@ -245,7 +245,7 @@ class Magnifier(VisionEnhancementProvider):
 		Subclasses may override this method to implement context specific behaviour.
 		"""
 		rect = self.getContextRect(context, obj)
-		self.trackToRectangle(rect, context=context, aria=aria)
+		self.trackToRectangle(rect, context=context, area=area)
 
 	@abstractmethod
 	def trackToRectangle(self, rect, context=CONTEXT_UNDETERMINED, area=None):
