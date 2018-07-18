@@ -310,6 +310,17 @@ ROLE_TO_CLASS_MAP = {
 	ROLE_COLORENHANCER: ColorEnhancer,
 }
 
+ROLE_DESCRIPTIONS = {
+	# Translators: The name for a vision enhancement provider that magnifies one or more parts of the screen.
+	ROLE_MAGNIFIER: _("Magnifier"),
+	# Translators: The name for a vision enhancement provider that highlights important areas on screen,
+	# such as the focus, caret or review cursor location.
+	ROLE_HIGHLIGHTER: _("Highlighter"),
+	# Translators: The name for a vision enhancement provider that enhances the color presentation.
+	# (i.e. color inversion, gray scale coloring, etc.)
+	ROLE_COLORENHANCER: _("Color enhancer"),
+}
+
 class VisionHandler(AutoPropertyObject):
 
 	def __init__(self):
