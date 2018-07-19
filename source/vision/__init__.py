@@ -247,7 +247,10 @@ class Magnifier(VisionEnhancementProvider):
 		The base implementation simply tracks to the location of the object.
 		Subclasses may override this method to implement context specific behaviour.
 		"""
-		rect = self.getContextRect(context, obj)
+		try:
+			rect = self.getContextRect(context, obj)
+		except LookupError:
+			return
 		self.trackToRectangle(rect, context=context, area=area)
 
 	@abstractmethod
