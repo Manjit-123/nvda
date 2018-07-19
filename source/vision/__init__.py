@@ -26,6 +26,7 @@ import wx
 from collections import defaultdict
 import textInfos
 import NVDAObjects
+import winVersion
 
 CONTEXT_UNDETERMINED = "undetermined"
 CONTEXT_FOCUS = "focus"
@@ -493,8 +494,9 @@ class VisionHandler(AutoPropertyObject):
 
 def initialize():
 	# Register build in providers
-	from screenMask import ScreenMask
-	registerProviderCls(ScreenMask)
+	if (winVersion.major, winVersion.minor) >= (6, 2):
+		from screenMask import WinMagnificationScreenMask as ScreenMask
+		registerProviderCls(ScreenMask)
 	from defaultHighlighter import DefaultHighlighter
 	registerProviderCls(DefaultHighlighter)
 	global handler

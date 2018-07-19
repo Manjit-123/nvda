@@ -4,11 +4,10 @@
 #See the file COPYING for more details.
 #Copyright (C) 2018 NV Access Limited
 
-"""Screen mask/curtain implementation based on the windows magnification API."""
-
 from . import ColorEnhancer, ColorTransformation
 import winMagnification
 from ctypes import byref
+import winVersion
 
 TRANSFORM_BLACK = winMagnification.MAGCOLOREFFECT()
 TRANSFORM_BLACK.transform[4][4] = 1.0
@@ -19,13 +18,17 @@ TRANSFORM_DEFAULT.transform[2][2] = 1.0
 TRANSFORM_DEFAULT.transform[3][3] = 1.0
 TRANSFORM_DEFAULT.transform[4][4] = 1.0
 
-class ScreenMask(ColorEnhancer):
+class WinMagnificationScreenMask(ColorEnhancer):
+	"""Screen mask implementation based on the windows magnification API.
+	This is only supported on Windows 8 and abbove."""
 	name = "screenMask"
 	availableTransformations = (
 		ColorTransformation("black", _("black screen"), TRANSFORM_BLACK)
 	)
 
 	def __init__(self, *roles):
+		if (winVersion.major, winVersion.minor) < (6, 2):
+			raise RuntimeError("This vision enhancement provider is only supported on Windows 8 and above")
 		winMagnification.Initialize()
 		super(ScreenMask, self).__init__(*roles)
 
