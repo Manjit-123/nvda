@@ -332,16 +332,16 @@ ROLE_DESCRIPTIONS = {
 }
 
 def getProviderList(excludeNegativeChecks=True):
-	"""Gets a list of available vision enhancement names with their descriptions and supported roles.
+	"""Gets a list of available vision enhancement names with their descriptions as well as supported and conflicting roles.
 	@param excludeNegativeChecks: excludes all providers for which the check method returns C{False}.
 	@type excludeNegativeChecks: bool
-	@return: list of tuples with provider names, descriptions and supported roles.
-	@rtype: [(str,unicode,frozenset([ROLE_*]))]
+	@return: list of tuples with provider names, descriptions, supported roles and conflicting roles.
+	@rtype: [(str,unicode,[ROLE_*],[ROLE_*])]
 	"""
 	providerList = []
 	for provider in _visionEnhancementProviders:
 		if not excludeNegativeChecks or provider.check():
-			providerList.append((provider.name, provider.description, provider.supportedRoles))
+			providerList.append((provider.name, provider.description, list(provider.supportedRoles), list(provider.conflictingRoles)))
 		else:
 			log.debugWarning("Vision enhancement provider %s reports as unavailable, excluding" % provider.name)
 	providerList.sort(key=lambda d : d[1].lower())

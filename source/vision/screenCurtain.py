@@ -6,7 +6,7 @@
 
 """Screen curtain implementation based on the windows magnification API."""
 
-from . import ColorEnhancer, ColorTransformation, ROLE_MAGNIFIER
+from . import ColorEnhancer, ColorTransformation, ROLE_MAGNIFIER, ROLE_HIGHLIGHTER
 import winMagnification
 from ctypes import byref
 import winVersion
@@ -30,7 +30,7 @@ class WinMagnificationScreenCurtain(ColorEnhancer):
 		# Translators: The state when the screen curtain is disabled.
 		ColorTransformation("default", _("disabled"), TRANSFORM_BLACK)
 	)
-	conflictingRoles = frozenset([ROLE_MAGNIFIER])
+	conflictingRoles = frozenset([ROLE_MAGNIFIER, ROLE_HIGHLIGHTER])
 
 	def __init__(self, *roles):
 		if (winVersion.winVersion.major, winVersion.winVersion.minor) < (6, 2):

@@ -2498,15 +2498,16 @@ class VisionProviderSelectionDialog(SettingsDialog):
 		sHelper = guiHelper.BoxSizerHelper(self, sizer=settingsSizer)
 
 		self._state = {role:config.conf['vision'][role] for role in self.availableRoles}
+		self._oldState = self._state.copy()
 		# Translators: The label for a setting in braille settings to choose a vision enhancement provider.
 		providerLabelText = _("&Vision enhancement providers:")
-		self.providerList = sHelper.addLabeledControl(providerLabelText, nvdaControls.CustomCheckableListBox, choices=[])
+		self.providerList = sHelper.addLabeledControl(providerLabelText, nvdaControls.CustomCheckListBox, choices=[])
 		self.providerList.Bind(wx.EVT_LISTBOX, self.onProviderSelected)
 		self.providerList.Bind(wx.EVT_CHECKLISTBOX, self.onProviderToggled)
 
 		# Translators: The label for a setting in braille settings to enable/disable the roles that should be enabled for vision enhancement providers.
 		rolesLabelText = _("&Use this provider as:")
-		self.rolesList = sHelper.addLabeledControl(rolesLabelText, nvdaControls.CustomCheckableListBox, choices=[])
+		self.rolesList = sHelper.addLabeledControl(rolesLabelText, nvdaControls.CustomCheckListBox, choices=[])
 		self.rolesList.Disable()
 		self.rolesList.Bind(wx.EVT_CHECKLISTBOX, self.onRoleToggled)
 
@@ -2520,21 +2521,28 @@ class VisionProviderSelectionDialog(SettingsDialog):
 		providerList = vision.getProviderList()
 		self.providerNames = [provider[0] for provider in providerList]
 		providerChoices = [provider[1] for provider in providerList]
-		self.providerRolesList = [provider[2] for provider in providerList]
+		self.providerSupportedRolesList = [provider[2] for provider in providerList]
+		self.providerConflictingRolesList = [provider[3] for provider in providerList]
 		self.providerList.Clear()
 		self.providerList.SetItems(providerChoices)
-		self.providerList.Checked = [self.providerNames.index(name) for role, name in self._state.iteritems() if name in self.providerNames]
+		self.syncProviderCheckboxes()
 		self.providerList.Select(0)
 
+	def syncProviderCheckboxes(self):
+		self.providerList.Checked = [self.providerNames.index(name) for role, name in self._state.iteritems() if name in self.providerNames]
+
 	def updateRoles(self):
-		providerName = self.providerNames[self.providerList.Selection]
-		providerRoles = self.providerRolesList[self.providerList.Selection]
+		providerRoles = self.providerSupportedRolesList[self.providerList.Selection]
 		self.rolesList.SetItems([vision.ROLE_DESCRIPTIONS[role] for role in providerRoles])
+		self.syncRoleCheckboxes()
+		self.rolesList.Enable(len(providerRoles)>1)
+
+	def syncRoleCheckboxes(self):
+		providerName = self.providerNames[self.providerList.Selection]
+		providerRoles = self.providerSupportedRolesList[self.providerList.Selection]
 		self.rolesList.Checked = [index for index, role in enumerate(providerRoles)
-			if config.conf['vision'][role] == providerName
+			if self._state[role] == providerName
 		]
-		#self.rolesList.Enable(len(providerRoles)>1)
-		self.rolesList.Enable()
 
 	def onProviderSelected(self, evt):
 		self.updateRoles()
@@ -2543,17 +2551,19 @@ class VisionProviderSelectionDialog(SettingsDialog):
 		if (evt is None and index is None) or (evt is not None and index is not None):
 			raise ValueError("Either evt or index should be provided")
 		if evt:
+			self._oldState.update(self._state)
 			evt.Skip()
 			index = evt.Int
 		assert index is not None, "Index is None"
 		if index != self.providerList.Selection:
 			# Toggled an unselected provider
 			return
-		providerRoles = self.providerRolesList[index]
+		providerRoles = self.providerSupportedRolesList[index]
 		itemsToProcess = []
-		if self.providerList.IsChecked(index):
+		isChecked = self.providerList.IsChecked(index)
+		if isChecked:
 			itemsToProcess.extend(item for item, role in enumerate(providerRoles)
-				if not self._state[role]
+				if self._state[role] != self.providerNames[index]
 			)
 			self.rolesList.Checked = itemsToProcess
 		else:
@@ -2564,32 +2574,81 @@ class VisionProviderSelectionDialog(SettingsDialog):
 		# Setting the checked state of items doesn't trigger EVT_CHECKLISTBOX.
 		for item in itemsToProcess:
 			self.onRoleToggled(index=item)
+		if evt and isChecked:
+			self.evaluatePossibleConflicts(isProvider=True)
 
 	def onRoleToggled(self, evt=None, index=None):
 		if (evt is None and index is None) or (evt is not None and index is not None):
 			raise ValueError("Either evt or index should be provided")
 		if evt:
+			evt.Skip()
+			self._oldState.update(self._state)
 			index = evt.Int
 		assert index is not None, "Index is None"
 		providerName = self.providerNames[self.providerList.Selection]
-		providerRoles = list(self.providerRolesList[self.providerList.Selection])
-		if self.rolesList.IsChecked(index):
-			import tones
-			tones.beep(440,30)
-			self._state[providerRoles[index]] = providerName
+		role = self.providerSupportedRolesList[self.providerList.Selection][index]
+		isChecked = self.rolesList.IsChecked(index)
+		if isChecked:
+			# Process conflicting roles
+			for item in self.providerList.Checked:
+				for conflict in self.providerConflictingRolesList[item]:
+					name = self.providerNames[item]
+					if item is self.providerList.Selection:
+						self._state[conflict] = None
+					elif role == conflict:
+						self._state.update({supported:None for supported in self.providerSupportedRolesList[item] if self._state[supported]==name})
+			self._state[role] = providerName
 		else:
-			self._state[providerRoles[index]] = None
+			self._state[role] = None
 		if evt:
-			checkedProviders = set(self.providerList.Checked)
-			if self.rolesList.Checked:
-				checkedProviders.add(self.providerList.Selection)
-			else:
-				try:
-					checkedProviders.remove(self.providerList.Selection)
-				except KeyError:
-					pass
-			self.providerList.Checked = checkedProviders
-			evt.Skip()
+			self.providerList.CheckItem(self.providerList.Selection, bool(self.rolesList.Checked))
+			if isChecked:
+				self.evaluatePossibleConflicts(isProvider=False)
+
+	def buildProviderWithRolesString(self, provider, roles):
+		providerString = self.providerList.GetString(self.providerNames.index(provider))
+		roleStrings = [vision.ROLE_DESCRIPTIONS[role] for role in roles]
+		if len(roleStrings) == 1:
+			# Translators: Displayed in a warning when a provider is enabled/disabled for one or more roles.
+			return _("{provider} as {role{").format(
+				provider=providerString,
+				role=roleStrings[0]
+			)
+		else:
+			# Translators: Displayed in a warning when a provider is enabled/disabled for multiple roles.
+			return _("{provider} as {roles{ and {lastRole}").format(
+				provider=providerString,
+				roles=", ".join(roleStrings[:-1]),
+				lastRole=roles[-1]
+			)
+
+	def evaluatePossibleConflicts(self, isProvider):
+		differences = [role for role in self._state if self._state[role] != self._oldState[role] and self._oldState[role]]
+		if differences:
+			oldProvidersAndRoles = defaultdict(list)
+			for role, provider in self._oldState.iteritems():
+				if provider and roles in differences:
+					oldProvidersAndRoles[provider].append(role)
+			# Translators: A message to warn the user that checking a provider or role
+			# caused a conflict
+			message = _(
+				"You are about to enable {activeProviderWithRoles}\n."
+				"This will disable {conflicts}\n"
+				"Would you like to continue?"
+			).format(
+				activeProviderWithRoles="",
+				conflicts="fluf"
+			)
+			if gui.messageBox(
+				message,
+				# Translators: The title of the warning dialog displayed when checking a provider or role
+				# caused a conflict
+				_("Warning"),
+				wx.YES|wx.NO|wx.ICON_WARNING,self
+			) == wx.NO:
+				self._state.update(self._oldState)
+		self.syncProviderCheckboxes()
+		self.syncRoleCheckboxes()
 
 	def onOk(self, evt):
 		if not self.providerNames:
