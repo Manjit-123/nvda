@@ -32,6 +32,7 @@ import queueHandler
 import braille
 import brailleTables
 import brailleInput
+import vision
 import core
 import keyboardHandler
 import characterProcessing
@@ -46,7 +47,6 @@ import touchHandler
 import winVersion
 import weakref
 import time
-import vision
 
 class SettingsDialog(wx.Dialog):
 	"""A settings dialog.
@@ -2491,9 +2491,64 @@ class VisionSettingsPanel(SettingsPanel):
 class VisionProviderSelectionDialog(SettingsDialog):
 	# Translators: This is the label for the braille provider selection dialog.
 	title = _("Select Vision Providers")
+	availableRoles = tuple(role for role in vision.ROLE_TO_CLASS_MAP.iterkeys())
 
 	def makeSettings(self, settingsSizer):
 		sHelper = guiHelper.BoxSizerHelper(self, sizer=settingsSizer)
+
+		# Translators: The label for a setting in braille settings to choose a vision enhancement provider.
+		providerLabelText = _("&Vision enhancement providers:")
+		self.providerList = sHelper.addLabeledControl(providerLabelText, wx.CheckListBox, choices=[])
+		self.Bind(wx.EVT_LISTBOX, self.onProviderSelected, self.providerList)
+
+		# Translators: The label for a setting in braille settings to enable/disable the roles that should be enabled for vision enhancement providers.
+		rolesLabelText = _("&Use this provider as:")
+		self.rolesList = sHelper.addLabeledControl(rolesLabelText, wx.CheckListBox, choices=[])
+		self.rolesList.Disable()
+
+		self.updateEnhancementProviderLists()
+
+	def postInit(self):
+		# Finally, ensure that focus is on the list of providers.
+		self.providerList.SetFocus()
+
+	def updateEnhancementProviderLists(self):
+		providerList = vision.getProviderList()
+		self.providerNames = [provider[0] for provider in providerList]
+		providerChoices = [provider[1] for provider in providerList]
+		self.providerRoles = [provider[2] for provider in providerList]
+		self.providerList.Clear()
+		self.providerList.SetItems(providerChoices)
+		checkedItems = []
+		for role in self.availableRoles:
+			configuredProvider = config.conf['vision'][role]
+			if configuredProvider:
+				checkedItems.append(self.providerNames.index(configuredProvider))
+		self.providerList.Checked = checkedItems
+		self.updateRoles()
+
+	def updateRoles(self):
+		providerName = self.providerNames[self.providerList.GetSelection()]
+		providerRoles = self.providerRoles[self.providerList.GetSelection()]
+		self.rolesList.SetItems([vision.ROLE_DESCRIPTIONS[role] for role in providerRoles])
+		self.rolesList.Checked = (index for index, role in enumerate(providerRoles)
+			if config.conf['vision'][role] == providerName
+			)
+		self.rolesList.Enable(len(providerRoles)>1)
+
+	def onProviderSelected(self, evt):
+		self.updateRoles()
+
+	def onOk(self, evt):
+		if not self.providerNames:
+			# The list of providers has not been populated yet, so we didn't change anything in this panel
+			return
+
+		if self.IsModal():
+			# Hack: we need to update the providers in our parent window before closing.
+			# Otherwise, NVDA will report the old providers even though the new providers are reflected visually.
+			pass #todo
+		super(VisionProviderSelectionDialog, self).onOk(evt)
 
 """ The Id of the category panel in the multi category settings dialog, this is set when the dialog is created
 and returned to None when the dialog is destroyed. This can be used by an AppModule for NVDA to identify and announce

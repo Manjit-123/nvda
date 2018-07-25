@@ -53,6 +53,11 @@ class VisionEnhancementProvider(AutoPropertyObject):
 	conflictingRoles = frozenset()
 	_instance = None
 
+	@classmethod
+	def check(cls):
+		return True
+
+	@classmethod
 	def __new__(cls, *args, **kwargs):
 		# Make this a singleton.
 		inst = cls._instance() if cls._instance else None
@@ -325,6 +330,22 @@ ROLE_DESCRIPTIONS = {
 	# (i.e. color inversion, gray scale coloring, etc.)
 	ROLE_COLORENHANCER: _("Color enhancer"),
 }
+
+def getProviderList(excludeNegativeChecks=True):
+	"""Gets a list of available vision enhancement names with their descriptions and supported roles.
+	@param excludeNegativeChecks: excludes all providers for which the check method returns C{False}.
+	@type excludeNegativeChecks: bool
+	@return: list of tuples with provider names, descriptions and supported roles.
+	@rtype: [(str,unicode,frozenset([ROLE_*]))]
+	"""
+	providerList = []
+	for provider in _visionEnhancementProviders:
+		if not excludeNegativeChecks or provider.check():
+			providerList.append((provider.name, provider.description, provider.supportedRoles))
+		else:
+			log.debugWarning("Vision enhancement provider %s reports as unavailable, excluding" % provider.name)
+	providerList.sort(key=lambda d : d[1].lower())
+	return providerList
 
 class VisionHandler(AutoPropertyObject):
 
