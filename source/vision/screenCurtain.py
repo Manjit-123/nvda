@@ -36,10 +36,10 @@ class WinMagnificationScreenCurtain(ColorEnhancer):
 		if (winVersion.winVersion.major, winVersion.winVersion.minor) < (6, 2):
 			raise RuntimeError("This vision enhancement provider is only supported on Windows 8 and above")
 		winMagnification.Initialize()
-		super(ScreenCurtain, self).__init__(*roles)
+		super(WinMagnificationScreenCurtain, self).__init__(*roles)
 
 	def initializeColorEnhancer(self):
-		super(ScreenCurtain, self).initializeColorEnhancer()
+		super(WinMagnificationScreenCurtain, self).initializeColorEnhancer()
 		self.transformation = self.supportedTransformations[0]
 
 	def _get_transformation(self):
@@ -51,8 +51,8 @@ class WinMagnificationScreenCurtain(ColorEnhancer):
 
 	def terminateColorEnhancer(self):
 		self.transformation = self.supportedTransformations[1]
-		super(ScreenCurtain, self).terminateColorEnhancer()
+		super(WinMagnificationScreenCurtain, self).terminateColorEnhancer()
 
 	def terminate(self, *roles):
-		winMagnification.Deinitialize()
-		super(ScreenCurtain, self).terminate(*roles)
+		winMagnification.Uninitialize()
+		super(WinMagnificationScreenCurtain, self).terminate(*roles)

@@ -33,6 +33,7 @@ import braille
 import brailleTables
 import brailleInput
 import vision
+from collections import defaultdict
 import core
 import keyboardHandler
 import characterProcessing
@@ -2496,15 +2497,18 @@ class VisionProviderSelectionDialog(SettingsDialog):
 	def makeSettings(self, settingsSizer):
 		sHelper = guiHelper.BoxSizerHelper(self, sizer=settingsSizer)
 
+		self._state = {role:config.conf['vision'][role] for role in self.availableRoles}
 		# Translators: The label for a setting in braille settings to choose a vision enhancement provider.
 		providerLabelText = _("&Vision enhancement providers:")
-		self.providerList = sHelper.addLabeledControl(providerLabelText, wx.CheckListBox, choices=[])
-		self.Bind(wx.EVT_LISTBOX, self.onProviderSelected, self.providerList)
+		self.providerList = sHelper.addLabeledControl(providerLabelText, nvdaControls.CustomCheckableListBox, choices=[])
+		self.providerList.Bind(wx.EVT_LISTBOX, self.onProviderSelected)
+		self.providerList.Bind(wx.EVT_CHECKLISTBOX, self.onProviderToggled)
 
 		# Translators: The label for a setting in braille settings to enable/disable the roles that should be enabled for vision enhancement providers.
 		rolesLabelText = _("&Use this provider as:")
-		self.rolesList = sHelper.addLabeledControl(rolesLabelText, wx.CheckListBox, choices=[])
+		self.rolesList = sHelper.addLabeledControl(rolesLabelText, nvdaControls.CustomCheckableListBox, choices=[])
 		self.rolesList.Disable()
+		self.rolesList.Bind(wx.EVT_CHECKLISTBOX, self.onRoleToggled)
 
 		self.updateEnhancementProviderLists()
 
@@ -2516,38 +2520,94 @@ class VisionProviderSelectionDialog(SettingsDialog):
 		providerList = vision.getProviderList()
 		self.providerNames = [provider[0] for provider in providerList]
 		providerChoices = [provider[1] for provider in providerList]
-		self.providerRoles = [provider[2] for provider in providerList]
+		self.providerRolesList = [provider[2] for provider in providerList]
 		self.providerList.Clear()
 		self.providerList.SetItems(providerChoices)
-		checkedItems = []
-		for role in self.availableRoles:
-			configuredProvider = config.conf['vision'][role]
-			if configuredProvider:
-				checkedItems.append(self.providerNames.index(configuredProvider))
-		self.providerList.Checked = checkedItems
-		self.updateRoles()
+		self.providerList.Checked = [self.providerNames.index(name) for role, name in self._state.iteritems() if name in self.providerNames]
+		self.providerList.Select(0)
 
 	def updateRoles(self):
-		providerName = self.providerNames[self.providerList.GetSelection()]
-		providerRoles = self.providerRoles[self.providerList.GetSelection()]
+		providerName = self.providerNames[self.providerList.Selection]
+		providerRoles = self.providerRolesList[self.providerList.Selection]
 		self.rolesList.SetItems([vision.ROLE_DESCRIPTIONS[role] for role in providerRoles])
-		self.rolesList.Checked = (index for index, role in enumerate(providerRoles)
+		self.rolesList.Checked = [index for index, role in enumerate(providerRoles)
 			if config.conf['vision'][role] == providerName
-			)
-		self.rolesList.Enable(len(providerRoles)>1)
+		]
+		#self.rolesList.Enable(len(providerRoles)>1)
+		self.rolesList.Enable()
 
 	def onProviderSelected(self, evt):
 		self.updateRoles()
+
+	def onProviderToggled(self, evt=None, index=None):
+		if (evt is None and index is None) or (evt is not None and index is not None):
+			raise ValueError("Either evt or index should be provided")
+		if evt:
+			evt.Skip()
+			index = evt.Int
+		assert index is not None, "Index is None"
+		if index != self.providerList.Selection:
+			# Toggled an unselected provider
+			return
+		providerRoles = self.providerRolesList[index]
+		itemsToProcess = []
+		if self.providerList.IsChecked(index):
+			itemsToProcess.extend(item for item, role in enumerate(providerRoles)
+				if not self._state[role]
+			)
+			self.rolesList.Checked = itemsToProcess
+		else:
+			itemsToProcess.extend(item for item, role in enumerate(providerRoles)
+				if self._state[role] == self.providerNames[index]
+			)
+			self.rolesList.Checked = ()
+		# Setting the checked state of items doesn't trigger EVT_CHECKLISTBOX.
+		for item in itemsToProcess:
+			self.onRoleToggled(index=item)
+
+	def onRoleToggled(self, evt=None, index=None):
+		if (evt is None and index is None) or (evt is not None and index is not None):
+			raise ValueError("Either evt or index should be provided")
+		if evt:
+			index = evt.Int
+		assert index is not None, "Index is None"
+		providerName = self.providerNames[self.providerList.Selection]
+		providerRoles = list(self.providerRolesList[self.providerList.Selection])
+		if self.rolesList.IsChecked(index):
+			import tones
+			tones.beep(440,30)
+			self._state[providerRoles[index]] = providerName
+		else:
+			self._state[providerRoles[index]] = None
+		if evt:
+			checkedProviders = set(self.providerList.Checked)
+			if self.rolesList.Checked:
+				checkedProviders.add(self.providerList.Selection)
+			else:
+				try:
+					checkedProviders.remove(self.providerList.Selection)
+				except KeyError:
+					pass
+			self.providerList.Checked = checkedProviders
+			evt.Skip()
 
 	def onOk(self, evt):
 		if not self.providerNames:
 			# The list of providers has not been populated yet, so we didn't change anything in this panel
 			return
 
+		setProviders = defaultdict(set)
+		for role, name in self._state.iteritems():
+			setProviders[name].add(role)
+		for name, roles in setProviders.iteritems():
+			if not vision.handler.setProvider(name, *roles):
+				gui.messageBox(_("Could not load the %s vision enhancement provider.")%name, _("Vision Enhancement Provider Error"), wx.OK|wx.ICON_WARNING, self)
+				return 
+
 		if self.IsModal():
 			# Hack: we need to update the providers in our parent window before closing.
 			# Otherwise, NVDA will report the old providers even though the new providers are reflected visually.
-			pass #todo
+			self.Parent.updateCurrentProviders()
 		super(VisionProviderSelectionDialog, self).onOk(evt)
 
 """ The Id of the category panel in the multi category settings dialog, this is set when the dialog is created
