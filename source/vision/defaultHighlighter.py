@@ -111,5 +111,4 @@ class HighlightWindow(wx.Frame):
 		winUser.SetLayeredWindowAttributes(self.Handle, 0, self.transparency, winUser.LWA_ALPHA | winUser.LWA_COLORKEY)
 		self.Bind(wx.EVT_PAINT, highlighter.onPaint)
 		self.Disable()
-		# Calling Show too quickly after Disable causes Disable to fail sometimes.
-		wx.CallAfter(self.Show)
+		wx.CallLater(50, self.Show)

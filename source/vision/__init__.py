@@ -27,7 +27,7 @@ from collections import defaultdict
 import textInfos
 import NVDAObjects
 import winVersion
-from locationHelper import RectLTRB
+from locationHelper import RectLTRB, Point
 
 CONTEXT_UNDETERMINED = "undetermined"
 CONTEXT_FOCUS = "focus"
@@ -148,12 +148,24 @@ class VisionEnhancementProvider(AutoPropertyObject):
 			except NotImplementedError:
 				# There is nothing to do here
 				raise LookupError
-			point = caretInfo.pointAtStart
-			return RectLTRB.fromPoint(point)
+			if caretInfo.isCollapsed:
+				caretInfo.expand(textInfos.UNIT_CHARACTER)
+			try:
+				return caretInfo.boundingRect.toLTRB()
+			# Todo: remove AttributeError
+			except (AttributeError, NotImplementedError, LookupError):
+				point = caretInfo.pointAtStart
+				return RectLTRB.fromPoint(point)
 		elif context == CONTEXT_REVIEW:
 			reviewInfo = api.getReviewPosition()
-			point = reviewInfo.pointAtStart
-			return RectLTRB.fromPoint(point)
+			if reviewInfo.isCollapsed:
+				reviewInfo.expand(textInfos.UNIT_CHARACTER)
+			try:
+				return reviewInfo.boundingRect.toLTRB()
+			# Todo: remove AttributeError
+			except (AttributeError, NotImplementedError, LookupError):
+				point = reviewInfo.pointAtStart
+				return RectLTRB.fromPoint(point)
 		location = obj.location
 		if not location:
 			raise LookupError
@@ -258,8 +270,7 @@ class Magnifier(VisionEnhancementProvider):
 	def trackToPoint(self, point, context=CONTEXT_UNDETERMINED, area=None):
 		"""Tracks the magnifier to the given point.
 		The base implementation creates a rectangle from a point and tracks to that rectangle."""
-		x, y = point
-		self.trackToRectangle((x, y, x+1, y+1), context=context, area=area)
+		self.trackToRectangle(RectLTRB.fromPoint(point), context=context, area=area)
 
 	_abstract_magnificationLevel = True
 	def _get_magnificationLevel(self):
@@ -533,7 +544,7 @@ class VisionHandler(AutoPropertyObject):
 	def handleMouseMove(self, obj, x, y):
 		# Mouse moves execute once per core cycle.
 		if self.magnifier and self.magnifier.enabled:
-			self.magnifier.trackToPoint((x, y), context=CONTEXT_MOUSE)
+			self.magnifier.trackToPoint(Point(x, y), context=CONTEXT_MOUSE)
 
 	def handleConfigProfileSwitch(self):
 		for role in ROLE_TO_CLASS_MAP.iterkeys():
