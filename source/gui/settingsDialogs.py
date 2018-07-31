@@ -2542,6 +2542,7 @@ class VisionProviderSelectionDialog(SettingsDialog):
 		self.providerList.SetItems(providerChoices)
 		self.syncProviderCheckboxes()
 		self.providerList.Select(0)
+		self.updateRoles()
 
 	def syncProviderCheckboxes(self):
 		self.providerList.Checked = [self.providerNames.index(name) for name, roles in self._state.iteritems() if name in self.providerNames and roles]
@@ -2606,6 +2607,7 @@ class VisionProviderSelectionDialog(SettingsDialog):
 				name = self.providerNames[item]
 				for conflict in self.providerConflictingRolesList[item]:
 					if conflict is role:
+						self._state[None] |= self._state[name]
 						self._state[name].clear()
 					else:
 						self.changeRoleInState(conflict, newProvider=None)
@@ -2682,6 +2684,7 @@ class VisionProviderSelectionDialog(SettingsDialog):
 			# The list of providers has not been populated yet, so we didn't change anything in this panel
 			return
 
+		log.error(self._state)
 		for name, roles in self._state.iteritems():
 			if roles and not vision.handler.setProvider(name, *roles):
 				gui.messageBox(_("Could not load the %s vision enhancement provider.")%name, _("Vision Enhancement Provider Error"), wx.OK|wx.ICON_WARNING, self)

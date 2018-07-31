@@ -413,8 +413,8 @@ class VisionHandler(AutoPropertyObject):
 		try:
 			conflicts = {name for name in (getattr(self, role) for role in providerCls.conflictingRoles) if name}
 			if conflicts:
-				raise RuntimeError("This provider couldn't be activated because of conflicts with provider(s) %s." %
-					", ".join(conflict.name for conflict in conflicts)
+				raise RuntimeError("Provider %s couldn't be activated because of conflicts with provider(s) %s." %
+					(providerCls.name, ", ".join(conflict.name for conflict in conflicts))
 				)
 
 			# Providers are singletons.
