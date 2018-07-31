@@ -2240,6 +2240,9 @@ class BrailleDisplaySelectionDialog(SettingsDialog):
 			port = self.possiblePorts[self.portsList.GetSelection()][0]
 			config.conf["braille"][display]["port"] = port
 		if not braille.handler.setDisplayByName(display):
+			# Translators: This message is presented when
+			# NVDA is unable to load the selected
+			# braille display.
 			gui.messageBox(_("Could not load the %s display.")%display, _("Braille Display Error"), wx.OK|wx.ICON_WARNING, self)
 			return 
 
@@ -2687,6 +2690,9 @@ class VisionProviderSelectionDialog(SettingsDialog):
 		log.error(self._state)
 		for name, roles in self._state.iteritems():
 			if roles and not vision.handler.setProvider(name, *roles):
+				# Translators: This message is presented when
+				# NVDA is unable to load selected
+				# vision enhancement provider.
 				gui.messageBox(_("Could not load the %s vision enhancement provider.")%name, _("Vision Enhancement Provider Error"), wx.OK|wx.ICON_WARNING, self)
 				return 
 
