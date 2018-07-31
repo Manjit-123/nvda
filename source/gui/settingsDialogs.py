@@ -2594,7 +2594,7 @@ class VisionProviderSelectionDialog(SettingsDialog):
 			raise ValueError("Either evt or index should be provided")
 		if evt:
 			evt.Skip()
-			self._oldState.update(self._state)
+			self._oldState = deepcopy(self._state)
 			index = evt.Int
 		assert index is not None, "Index is None"
 		providerName = self.providerNames[self.providerList.Selection]
@@ -2682,11 +2682,8 @@ class VisionProviderSelectionDialog(SettingsDialog):
 			# The list of providers has not been populated yet, so we didn't change anything in this panel
 			return
 
-		setProviders = defaultdict(set)
-		for role, name in self._state.iteritems():
-			setProviders[name].add(role)
-		for name, roles in setProviders.iteritems():
-			if not vision.handler.setProvider(name, *roles):
+		for name, roles in self._state.iteritems():
+			if roles and not vision.handler.setProvider(name, *roles):
 				gui.messageBox(_("Could not load the %s vision enhancement provider.")%name, _("Vision Enhancement Provider Error"), wx.OK|wx.ICON_WARNING, self)
 				return 
 
