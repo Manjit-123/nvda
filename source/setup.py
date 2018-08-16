@@ -199,6 +199,17 @@ setup(
 			"company_name": publisher,
 		},
 	],
+	service=[{
+		"modules": ["nvda_service"],
+		"icon_resources": [(1, "images/nvda.ico")],
+		"version":"%s.%s.%s.%s"%(version_year,version_major,version_minor,version_build),
+		"description": "NVDA service",
+		"product_version": version,
+		"copyright": copyright,
+		"company_name": publisher,
+		"uac_info": ("requireAdministrator", False),
+		"cmdline_style": "pywin32",
+	}],
 	options = {"py2exe": {
 		"bundle_files": 3,
 		"excludes": ["Tkinter",
