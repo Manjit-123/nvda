@@ -155,7 +155,7 @@ def initConfigPath(configPath=None):
 RUN_REGKEY = ur"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
 
 def getStartAfterLogon():
-	if (easeOfAccess.isSupported and easeOfAccess.canConfigTerminateOnDesktopSwitch
+	if (easeOfAccess.isRegistered() and easeOfAccess.canConfigTerminateOnDesktopSwitch
 			and easeOfAccess.willAutoStart(_winreg.HKEY_CURRENT_USER)):
 		return True
 	try:
@@ -168,7 +168,7 @@ def getStartAfterLogon():
 def setStartAfterLogon(enable):
 	if getStartAfterLogon() == enable:
 		return
-	if easeOfAccess.isSupported and easeOfAccess.canConfigTerminateOnDesktopSwitch:
+	if easeOfAccess.isRegistered() and easeOfAccess.canConfigTerminateOnDesktopSwitch:
 		easeOfAccess.setAutoStart(_winreg.HKEY_CURRENT_USER, enable)
 		if enable:
 			return
@@ -199,7 +199,7 @@ def isServiceInstalled():
 		return False
 
 def canStartOnSecureScreens():
-	return isInstalledCopy() and (easeOfAccess.isSupported or isServiceInstalled())
+	return isInstalledCopy() and (easeOfAccess.isRegistered() or isServiceInstalled())
 
 def execElevated(path, params=None, wait=False,handleAlreadyElevated=False):
 	import subprocess
@@ -233,7 +233,7 @@ SLAVE_FILENAME = u"nvda_slave.exe"
 NVDA_REGKEY = ur"SOFTWARE\NVDA"
 
 def getStartOnLogonScreen():
-	if easeOfAccess.isSupported and easeOfAccess.willAutoStart(_winreg.HKEY_LOCAL_MACHINE):
+	if easeOfAccess.isRegistered() and easeOfAccess.willAutoStart(_winreg.HKEY_LOCAL_MACHINE):
 		return True
 	try:
 		k = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, NVDA_REGKEY)
@@ -242,7 +242,7 @@ def getStartOnLogonScreen():
 		return False
 
 def _setStartOnLogonScreen(enable):
-	if easeOfAccess.isSupported:
+	if easeOfAccess.isRegistered():
 		# The installer will have migrated service config to EoA if appropriate,
 		# so we only need to deal with EoA here.
 		easeOfAccess.setAutoStart(_winreg.HKEY_LOCAL_MACHINE, enable)
