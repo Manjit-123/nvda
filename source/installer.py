@@ -222,7 +222,7 @@ def registerInstallation(installDir,startMenuFolder,shouldCreateDesktopShortcut,
 		_winreg.SetValueEx(k,"startMenuFolder",None,_winreg.REG_SZ,startMenuFolder)
 		if configInLocalAppData:
 			_winreg.SetValueEx(k,config.CONFIG_IN_LOCAL_APPDATA_SUBKEY,None,_winreg.REG_DWORD,int(configInLocalAppData))
-	registerEaseOfAccess(installDir)
+	easeOfAccess.register(installDir)
 	if startOnLogonScreen is not None:
 		config._setStartOnLogonScreen(startOnLogonScreen)
 	NVDAExe=os.path.join(installDir,u"nvda.exe")
@@ -256,12 +256,7 @@ def isDesktopShortcutInstalled():
 	return os.path.isfile(shortcutPath)
 
 def unregisterInstallation(keepDesktopShortcut=False):
-	try:
-		_winreg.DeleteKeyEx(_winreg.HKEY_LOCAL_MACHINE, easeOfAccess.APP_KEY_PATH,
-			_winreg.KEY_WOW64_64KEY)
-		easeOfAccess.setAutoStart(_winreg.HKEY_LOCAL_MACHINE, False)
-	except WindowsError:
-		pass
+	easeOfAccess.unregister()
 	import nvda_service
 	try:
 		nvda_service.stopService()
@@ -461,33 +456,3 @@ def createPortableCopy(destPath,shouldCopyUserConfig=True):
 	if shouldCopyUserConfig:
 		copyUserConfig(os.path.join(destPath,'userConfig'))
 	removeOldLibFiles(destPath,rebootOK=True)
-
-def registerEaseOfAccess(installDir):
-	with _winreg.CreateKeyEx(_winreg.HKEY_LOCAL_MACHINE, easeOfAccess.APP_KEY_PATH, 0,
-			_winreg.KEY_ALL_ACCESS | _winreg.KEY_WOW64_64KEY) as appKey:
-		_winreg.SetValueEx(appKey, "ApplicationName", None, _winreg.REG_SZ,
-			versionInfo.name)
-		_winreg.SetValueEx(appKey, "Description", None, _winreg.REG_SZ,
-			versionInfo.longName)
-		if easeOfAccess.canConfigTerminateOnDesktopSwitch:
-			_winreg.SetValueEx(appKey, "Profile", None, _winreg.REG_SZ,
-				'<HCIModel><Accommodation type="severe vision"/></HCIModel>')
-			_winreg.SetValueEx(appKey, "SimpleProfile", None, _winreg.REG_SZ,
-				"screenreader")
-			_winreg.SetValueEx(appKey, "ATExe", None, _winreg.REG_SZ,
-				"nvda.exe")
-			_winreg.SetValueEx(appKey, "StartExe", None, _winreg.REG_SZ,
-				os.path.join(installDir, u"nvda.exe"))
-			_winreg.SetValueEx(appKey, "StartParams", None, _winreg.REG_SZ,
-				"--ease-of-access")
-			_winreg.SetValueEx(appKey, "TerminateOnDesktopSwitch", None,
-				_winreg.REG_DWORD, 0)
-		else:
-			# We don't want NVDA to appear in EoA because
-			# starting NVDA from there won't work in this case.
-			# We can do this by not setting Profile and SimpleProfile.
-			# NVDA can still change the EoA logon settings.
-			_winreg.SetValueEx(appKey, "ATExe", None, _winreg.REG_SZ,
-				"nvda_eoaProxy.exe")
-			_winreg.SetValueEx(appKey, "StartExe", None, _winreg.REG_SZ,
-				os.path.join(installDir, u"nvda_eoaProxy.exe"))

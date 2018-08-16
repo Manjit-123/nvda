@@ -73,9 +73,16 @@ def main():
 			except:
 				pass
 			nvda_service.removeService()
-		if action == "service_NVDALauncher":
+		elif action == "service_NVDALauncher":
 			import nvda_service
 			nvda_service.nvdaLauncher()
+		elif action == "registerEaseOfAccess":
+			import easeOfAccess
+			nvdaDir = os.path.dirname(sys.argv[0])
+			easeOfAccess.register(nvdaDir)
+		elif action == "unregisterEaseOfAccess":
+			import easeOfAccess
+			easeOfAccess.unregister()
 		elif action == "explore_userConfigPath":
 			import config
 			path=config.getUserDefaultConfigPath()
