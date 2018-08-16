@@ -1,3 +1,9 @@
+#nvda_slave.pyw
+#A part of NonVisual Desktop Access (NVDA)
+#Copyright (C) 2009-2018 NV Access Limited
+#This file is covered by the GNU General Public License.
+#See the file COPYING for more details.
+
 """NVDA slave process
 Performs miscellaneous tasks which need to be performed in a separate process.
 """
@@ -32,10 +38,7 @@ def main():
 	args = sys.argv[2:]
 
 	try:
-		if action == "service_NVDALauncher":
-			import nvda_service
-			nvda_service.nvdaLauncher()
-		elif action=="install":
+		if action=="install":
 			installer.install(bool(int(args[0])),bool(int(args[1])))
 		elif action=="unregisterInstall":
 			import installer
@@ -58,18 +61,21 @@ def main():
 			enable = bool(int(args[0]))
 			import config
 			config._setStartOnLogonScreen(enable)
-		elif action == "installer_installService":
+		elif action == "installService":
 			import nvda_service
 			nvdaDir = os.path.dirname(sys.argv[0])
 			nvda_service.installService(nvdaDir)
 			nvda_service.startService()
-		elif action == "installer_uninstallService":
+		elif action == "uninstallService":
 			import nvda_service
 			try:
 				nvda_service.stopService()
 			except:
 				pass
 			nvda_service.removeService()
+		if action == "service_NVDALauncher":
+			import nvda_service
+			nvda_service.nvdaLauncher()
 		elif action == "explore_userConfigPath":
 			import config
 			path=config.getUserDefaultConfigPath()
